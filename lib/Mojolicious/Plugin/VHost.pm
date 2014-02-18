@@ -1,21 +1,16 @@
 package Mojolicious::Plugin::VHost;
 use Mojo::Base 'Mojolicious::Plugin';
 
-our $VERSION = '0.02';
-
-has qw(config);
-has defaults => sub { {} };
+our $VERSION = '0.03';
 
 sub register {
     my ($vhost, $app) = @_;
 
-    $vhost->config($app->config("VHost"));
-
-    $vhost->defaults({
+    my $defaults = {
         routes => $app->routes->namespaces,
         static => $app->static->paths,
         templates => $app->renderer->paths,
-    });
+    };
 
     $app->hook(
         before_dispatch => sub {
@@ -23,13 +18,14 @@ sub register {
 
             my $host = $c->tx->req->headers->host;
 
-            my $conf = $vhost->config->{$host} || $vhost->defaults;
+            my $conf = $c->app->config('VHost')->{$host} || $defaults;
 
             return unless $conf;
 
-            $c->app->routes->namespaces($conf->{routes});
-            $c->app->static->paths($conf->{static});
-            $c->app->renderer->paths($conf->{templates});
+            my $app = $c->app;
+            $app->routes->namespaces($conf->{routes});
+            $app->static->paths($conf->{static});
+            $app->renderer->paths($conf->{templates});
         }
     );
 }
